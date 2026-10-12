@@ -1,0 +1,32 @@
+# Judges how old heartbeat.json is and opens or closes the Scheduled work incident
+# (observability spec #1, section 1.8). Copy to .github/workflows/ in the status repository, and
+# scripts/heartbeat-age.sh to .github/scripts/. It needs no secret beyond the GITHUB_TOKEN every run gets.
+name: Heartbeat age
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  # Upptime closes this incident only when its own probe of the file goes from down to up (a file that went
+  # missing and came back, still stale). Running right after it reopens that incident at once, so the outage
+  # stays one incident instead of closing for a cycle and opening a second one.
+  workflow_run:
+    workflows: ["Uptime CI"]
+    types: [completed]
+  workflow_dispatch:
+permissions:
+  issues: write
+  contents: read
+concurrency:
+  group: heartbeat-age
+  cancel-in-progress: false
+jobs:
+  judge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Judge the heartbeat
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          HEARTBEAT_URL: https://storage.googleapis.com/bannion-prod-status/heartbeat.json
+          MAX_AGE_SECONDS: "300"
+        run: .github/scripts/heartbeat-age.sh

@@ -1,31 +1,64 @@
-# Change these first
-owner: upptime # Your GitHub organization or username, where this repository lives
-repo: upptime # The name of this repository
+# The public status page (observability spec #1, section 1.8, card O7). This file goes in the root of the new
+# status repository, made from the Upptime template. See README.md in this folder for the steps.
+#
+# Only four public URLs are probed. No tenant, no internal name, no health endpoint of the app itself.
+# deploy/test/status-page-test.sh holds this list to those four and holds the heartbeat URL to the prod manifest.
+owner: Bannion-Labs
+repo: status
+
+# One schedule for every probe. GitHub's cron often runs 5 to 15 minutes late. That is accepted.
+workflowSchedule:
+  uptime: "*/5 * * * *"
 
 sites:
-  - name: Google
-    url: https://www.google.com
-  - name: Wikipedia
-    url: https://en.wikipedia.org
-  - name: Hacker News
-    url: https://news.ycombinator.com
-  - name: Secret Site
-    url: $SECRET_SITE
+  - name: Sign in and the app
+    url: https://app.bannion.ai/login
+    expectedStatusCodes:
+      - 200
+  - name: Connections to your network
+    url: https://tunnel.bannion.ai/healthz
+    expectedStatusCodes:
+      - 200
+  - name: Pages and assets
+    # A fixed object the setup script writes once (observability spec §1.8), under the bucket named by
+    # BANNION_STATIC_BASE_URL in the prod manifest. Every page's scripts come from this bucket, so if it answers, assets do.
+    url: https://storage.googleapis.com/bannion-prod-static/status-probe.txt
+    expectedStatusCodes:
+      - 200
+  - name: Scheduled work
+    # The file the agent writes after each schedule tick. Upptime only sees that it answers. How old it is gets
+    # judged by workflows/heartbeat-age.yml, which opens and closes this component's incident.
+    url: https://storage.googleapis.com/bannion-prod-status/heartbeat.json
+    expectedStatusCodes:
+      - 200
+
+assignees: []
 
 status-website:
-  # Add your custom domain name, or remove the `cname` line if you don't have a domain
-  # Uncomment the `baseUrl` line if you don't have a custom domain and add your repo name there
-  cname: demo.upptime.js.org
-  # baseUrl: /your-repo-name
-  logoUrl: https://raw.githubusercontent.com/upptime/upptime.js.org/master/static/img/icon.svg
-  name: Upptime
-  introTitle: "**Upptime** is the open-source uptime monitor and status page, powered entirely by GitHub."
-  introMessage: This is a sample status page which uses **real-time** data from our [GitHub repository](https://github.com/upptime/upptime). No server required — just GitHub Actions, Issues, and Pages. [**Get your own for free**](https://github.com/upptime/upptime)
+  cname: status.bannion.ai
+  name: Bannion status
+  logoUrl: https://app.bannion.ai/favicon.ico
+  introTitle: "Is Bannion working right now?"
+  introMessage: "This page checks Bannion every 5 minutes. If something is wrong, you will see it here with the time it started."
   navbar:
     - title: Status
       href: /
-    - title: GitHub
-      href: https://github.com/$OWNER/$REPO
-
-# Upptime also supports notifications, assigning issues, and more
-# See https://upptime.js.org/docs/configuration
+  # Warm neutral dark, from the Bannion design rules. Meaning never rides on colour alone, so each state also
+  # gets a shape: a filled dot for working, a triangle for stopped.
+  css: |
+    :root {
+      --color-ink: #12100E;
+      --color-raised: #1A1714;
+      --color-line: #332E28;
+      --color-t1: #F2EDE4;
+      --color-t2: #C0B4A5;
+      --color-ok: #7E9A6A;
+      --color-stop: #C0563F;
+    }
+    body, html { background: var(--color-ink); color: var(--color-t1); }
+    a { color: var(--color-t2); }
+    article, .card, header, footer, nav { background: var(--color-raised); border-color: var(--color-line); border-radius: 6px; }
+    .up, .text-success { color: var(--color-ok); }
+    .down, .text-danger { color: var(--color-stop); }
+    .up::before, .text-success::before { content: "\25CF  "; }
+    .down::before, .text-danger::before { content: "\25B2  "; }
